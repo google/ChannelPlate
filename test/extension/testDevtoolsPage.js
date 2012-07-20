@@ -1,6 +1,5 @@
 
-var name = "devtools-" + chrome.devtools.inspectedWindow.tabId;
-var port = new RnRPortChromeForeground(name, function onMessage(message) {
+var port = new RnRPortDevtoolsForeground(function onMessage(message) {
   console.log("devtools got the message ", message);
 });
 

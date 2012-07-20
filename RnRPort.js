@@ -67,6 +67,9 @@ RnRPort.prototype = {
   }
 }
 
+//-----------------------------------------------------------------------------
+//  For communicating from an iframe to its window.parent
+
 function RnRChildIframePort(onMessage) {
   RnRPortUtil.assertFunction(onMessage);
   // http://www.whatwg.org/specs/web-apps/current-work/multipage/web-messaging.html#channel-messaging
@@ -88,6 +91,9 @@ function RnRChildIframePort(onMessage) {
 }
 
 RnRChildIframePort.prototype = Object.create(RnRPort.prototype);
+
+//-----------------------------------------------------------------------------
+// For communicating from a window to an iframe child
 
 function RnRParentPort(childIframe, onMessage) {
   RnRPortUtil.assertFunction(onMessage);
@@ -128,6 +134,11 @@ function RnRParentPort(childIframe, onMessage) {
 
 RnRParentPort.prototype = Object.create(RnRPort.prototype);
 
+//-----------------------------------------------------------------------------
+// For background pages listening for 
+// foreground pages by name.
+
+
 function RnRPortChromeBackground(waitForName, onMessage) {
   this.becomeListener(waitForName, onMessage);
 }
@@ -147,6 +158,10 @@ RnRPortChromeBackground.prototype.becomeListener = function(theirName, onMessage
   chrome.extension.onConnect.addListener(onConnect.bind(this));
 }
 
+//-----------------------------------------------------------------------------
+// For foreground pages to contact background pages.
+// Note  the name argument on each content script must be unique 
+
 function RnRPortChromeForeground(myName, onMessage) {
   this.port = chrome.extension.connect({name: myName});
   function onDisconnect(event){
@@ -158,6 +173,17 @@ function RnRPortChromeForeground(myName, onMessage) {
 }
 
 RnRPortChromeForeground.prototype = Object.create(RnRPortChromeBackground.prototype);
+
+
+function RnRPortDevtoolsForeground(onMessage) {
+  var name = "devtools-" + chrome.devtools.inspectedWindow.tabId;
+  RnRPortChromeForeground.call(this, name, onMessage);
+}
+
+RnRPortDevtoolsForeground.prototype = Object.create(RnRPortChromeForeground.prototype);
+
+//--------------------------------------------------------------------------------------------------------
+// Match content-script ports to devtools ports and ferry messages between them.
 
 function RnRPortChromeDevtoolsProxy() {
   this.devtoolsPorts = {};
