@@ -1,0 +1,24 @@
+<html>
+<head>
+<script src="../RnRPort.js"></script>
+
+</head>
+<body>
+<p>Open the debugging console to see the conversation logged</p>
+<iframe class='RnRPortClient' src="childFrame.html"></iframe>
+</body>
+<script>
+// Google BSD license http://code.google.com/google_bsd_license.html
+// Copyright 2011 Google Inc. johnjbarton@google.com
+
+// Before we create the port we need the iframe element, but it need not be loaded.
+var childFrame = document.querySelector('.RnRPortClient');
+
+var portToChild = new RnRParentPort(childFrame, function(message) {
+    console.log(window.location +  ' heard: \"' + message.data + '\"');
+  });
+
+portToChild.postMessage ("hello child");
+
+</script>
+</html>
