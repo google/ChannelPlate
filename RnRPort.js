@@ -48,6 +48,13 @@ function RnRPort(rawPort, onMessage) {
 }
 
 RnRPort.prototype = {
+
+  accept: function(port, onMessage) {
+    this.port = port;
+    this.port.onMessage.addListener(onMessage);
+    this.drainQueue();
+  },
+
   postMessage: function(message) {
     if (this.port) {
       this.port.postMessage(message);
@@ -65,7 +72,7 @@ RnRPort.prototype = {
     }
     delete this.queue;
   }
-}
+};
 
 //-----------------------------------------------------------------------------
 //  For communicating from an iframe to its window.parent
@@ -182,35 +189,53 @@ function RnRPortDevtoolsForeground(onMessage) {
 
 RnRPortDevtoolsForeground.prototype = Object.create(RnRPortChromeForeground.prototype);
 
-//--------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Match content-script ports to devtools ports and ferry messages between them.
 
 function RnRPortChromeDevtoolsProxy() {
   this.devtoolsPorts = {};
   this.webpagePorts = {};
+
   function onConnect(port) {
+    var tabId;
+    var myPorts, otherPorts;
+
     if(port.name.indexOf('devtools') === 0) {
-     var tabId = port.name.split('-')[1];
-      this.devtoolsPorts[tabId] = new RnRPort(port, this.onMessageFromDevTools.bind(this, tabId));
+      tabId = port.name.split('-')[1];
+      myPorts = this.devtoolsPorts;
+      otherPorts = this.webpagePorts;
     } else {
-      var tabId = port.sender.tab.id;
-      this.webpagePorts[tabId] =  new RnRPort(port, this.onMessageFromWebPage.bind(this, tabId));
+      tabId = port.sender.tab.id;
+      myPorts = this.webpagePorts;
+      otherPorts = this.devtoolsPorts;
     }
+
+    var onMessage = this.proxyMessage.bind(this, tabId, otherPorts);
+    var queueingPort = myPorts[tabId];
+    
+    if (queueingPort) {
+      queueingPort.accept(port, onMessage);
+    } else {
+      myPorts[tabId] = new RnRPort(port, onMessage);
+    }
+    
+    port.onDisconnect.addListener(function () {
+      delete myPorts[tabId];
+    }.bind(this));
+    
+    console.log("connect to "+port.name);
   }
+
   chrome.extension.onConnect.addListener(onConnect.bind(this));
 }
 
 RnRPortChromeDevtoolsProxy.prototype = {
-  onMessageFromWebPage: function(tabId, message) {
-    var port = this.devtoolsPorts[tabId];
-    if (port) port.postMessage(message);
-    // else eg no devtools open for page
+  proxyMessage: function(tabId, ports, message) {
+    var port = ports[tabId];
+    if (!port) { // no devtools open for the page
+      port = ports[tabId] = new RnRPort();
+    }    
+    port.postMessage(message);
+    console.log("proxyMessage %o: %o", port, message);
   },
-  onMessageFromDevTools: function(tabId, message) {
-    var port = this.webpagePorts[tabId];
-    if (port) {
-      port.postMessage(message)
-    }
-    // else eg background.html
-  }
 }
