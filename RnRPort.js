@@ -75,13 +75,13 @@ RnRPort.prototype = {
 };
 
 //-----------------------------------------------------------------------------
-//  For communicating from an iframe to its window.parent
+//  Client using eventWindow.postMessaage to send port
 
-function RnRChildIframePort(onMessage) {
+function RnRClient(eventWindow, onMessage) {
   RnRPortUtil.assertFunction(onMessage);
   // http://www.whatwg.org/specs/web-apps/current-work/multipage/web-messaging.html#channel-messaging
   
-  // The iframe will be the client, it will post to the parent (server)
+  // We will be the client and post to the listening parent (server)
   this.channel = new window.MessageChannel();
 
   // We allow the parent from any origin
@@ -91,19 +91,42 @@ function RnRChildIframePort(onMessage) {
   this.port = this.channel.port1;
   
   // The other port is sent to the remote side
-  window.parent.postMessage('RnRPort', this.targetOrigin, [this.channel.port2]);
+  eventWindow.postMessage('RnRPort', this.targetOrigin, [this.channel.port2]);
 
   // Implicitly start the port
   this.port.onmessage = onMessage;
+
+  window.addEventListener('unload', function onUnload() {
+     this.port.close();
+   }.bind(this));
 }
 
-RnRChildIframePort.prototype = Object.create(RnRPort.prototype);
+RnRClient.prototype = Object.create(RnRPort.prototype);
 
 //-----------------------------------------------------------------------------
-// For communicating from a window to an iframe child
+//  For communicating from an iframe to its window.parent
 
-function RnRParentPort(childIframe, onMessage) {
+function RnRChildIframePort(onMessage) {
+  RnRClient.call(this, window.parent, onMessage);
+}
+
+RnRChildIframePort.prototype = Object.create(RnRClient.prototype);
+
+//-----------------------------------------------------------------------------
+//  For communicating from a web page to its content window
+
+function WebPageRnRPort(onMessage) {
+  RnRClient.call(this, window, onMessage);
+}
+
+WebPageRnRPort.prototype = Object.create(RnRClient.prototype);
+//-----------------------------------------------------------------------------
+// web window Server, listening for connection 
+
+function RnRServerPort(clientURL, onMessage) {
   RnRPortUtil.assertFunction(onMessage);
+
+  this.targetOrigin = RnRPortUtil.getWebOrigin(clientURL);
 
   // The instance properties will not be set until we are sent a valid event
   //
@@ -113,18 +136,13 @@ function RnRParentPort(childIframe, onMessage) {
       return;
     } 
 
-    // We must be contaced by the childIframe after it has a valid contentWindow.
+    // We must be contacted by the childIframe after it has a valid contentWindow.
     //
-    this.targetOrigin = RnRPortUtil.getWebOrigin(childIframe.src);
     if (this.targetOrigin !== event.origin) {
-      delete this.targetOrigin;
       return;
     }
 
     this.port = event.ports[0];
-    childIframe.addEventListener('unload', function onUnload() {
-      this.port.close();
-    });
     
     this.port.onmessage = onMessage;
 
@@ -139,12 +157,20 @@ function RnRParentPort(childIframe, onMessage) {
   window.addEventListener('message', onRnRPort);
 }
 
-RnRParentPort.prototype = Object.create(RnRPort.prototype);
+RnRServerPort.prototype = Object.create(RnRPort.prototype);
+
+//-----------------------------------------------------------------------------
+// For communicating from a window to an iframe child
+
+function RnRParentPort(childIframe, onMessage) {
+  RnRServerPort.call(childIframe.src, onMessage);
+}
+
+RnRParentPort.prototype = Object.create(RnRServerPort.prototype);
 
 //-----------------------------------------------------------------------------
 // For background pages listening for 
 // foreground pages by name.
-
 
 function RnRPortChromeBackground(waitForName, onMessage) {
   this.becomeListener(waitForName, onMessage);
@@ -190,46 +216,27 @@ function RnRPortDevtoolsForeground(onMessage) {
 RnRPortDevtoolsForeground.prototype = Object.create(RnRPortChromeForeground.prototype);
 
 //-----------------------------------------------------------------------------
-// Match content-script ports to devtools ports and ferry messages between them.
+// Common functions for proxies
 
-function RnRPortChromeDevtoolsProxy() {
-  this.devtoolsPorts = {};
-  this.webpagePorts = {};
+var RnRProxyPrototype = {
 
-  function onConnect(port) {
-    var tabId;
-    var myPorts, otherPorts;
-
-    if(port.name.indexOf('devtools') === 0) {
-      tabId = port.name.split('-')[1];
-      myPorts = this.devtoolsPorts;
-      otherPorts = this.webpagePorts;
-    } else {
-      tabId = port.sender.tab.id;
-      myPorts = this.webpagePorts;
-      otherPorts = this.devtoolsPorts;
-    }
-
-    var onMessage = this.proxyMessage.bind(this, tabId, otherPorts);
-    var queueingPort = myPorts[tabId];
+  bind: function(port, connectionId, myPorts, otherPorts) {
+    var onMessage = this.proxyMessage.bind(this, connectionId, otherPorts);
+    var queueingPort = myPorts[connectionId];
     
     if (queueingPort) {
       queueingPort.accept(port, onMessage);
     } else {
-      myPorts[tabId] = new RnRPort(port, onMessage);
+      myPorts[connectionId] = new RnRPort(port, onMessage);
     }
     
     port.onDisconnect.addListener(function () {
-      delete myPorts[tabId];
+      delete myPorts[connectionId];
     }.bind(this));
     
     console.log("connect to "+port.name);
-  }
+  }, 
 
-  chrome.extension.onConnect.addListener(onConnect.bind(this));
-}
-
-RnRPortChromeDevtoolsProxy.prototype = {
   proxyMessage: function(tabId, ports, message) {
     var port = ports[tabId];
     if (!port) { // no devtools open for the page
@@ -239,3 +246,72 @@ RnRPortChromeDevtoolsProxy.prototype = {
     console.log("proxyMessage %o: %o", port, message);
   },
 }
+
+//-----------------------------------------------------------------------------
+// Match content-script ports to devtools ports and ferry messages between them.
+
+function RnRPortChromeDevtoolsProxy() {
+  this.devtoolsPorts = {};
+  this.contentScriptPorts = {};
+
+  function onConnect(port) {
+
+    if(port.name.indexOf('devtools') === 0) {
+      var tabId = port.name.split('-')[1];
+      this.bind(port, tabId, this.devtoolsPorts, this.contentScriptPorts);
+    } else {
+      var tabId = port.sender.tab.id;
+      this.bind(port, tabId, this.contentScriptPorts, this.devtoolsPorts);
+    }
+  }
+
+  chrome.extension.onConnect.addListener(onConnect.bind(this));
+}
+
+RnRPortChromeDevtoolsProxy.prototype = RnRProxyPrototype;
+
+//-----------------------------------------------------------------------------
+// Match webpage ports to content-script ports and ferry messages between them.
+
+function ContentScriptRnRProxy() {
+  this.contentScriptPorts = {};
+  this.webpagePorts = {};
+
+  // Listen for background connection.
+  //
+  function onConnect(port) { // This will be the background page
+    this.bind(port, 'background', this.webpagePorts, this.contentScriptPorts);
+  }
+  chrome.extension.onConnect.addListener(onConnect.bind(this));
+
+  this.targetOrigin = RnRPortUtil.getWebOrigin(window.location.href);
+
+  // Listen for web page connections
+  //
+  var onRnRPort = function(event) {
+
+    if (event.data !== 'RnRPort') {
+      return;
+    } 
+
+    if (this.targetOrigin !== event.origin) {
+      return;
+    }
+
+    this.bind(port, 'webpage', this.contentScriptPorts, this.webpagePorts);
+    
+    // Once we bind to the child window stop listening for it to connect.
+    //
+    window.removeEventListener('message', onRnRPort);
+  }.bind(this);
+
+  window.addEventListener('message', onRnRPort);
+
+}
+
+ContentScriptRnRProxy.prototype = RnRProxyPrototype;
+
+// NEXT test ContentScriptRnRProxy proxyMessage
+// TODO rename classes
+// TODO enclose in RrRPort module
+// TODO rename to CommonChannel CommonChannel.ContentScriptProxy CommonChannel.ChromeForeground
