@@ -1,15 +1,15 @@
 {
-  "name": "testRnRPort",
+  "name": "testChannelPlate",
   "manifest_version": 1,
   "version": "0.1",
   "minimum_chrome_version": "17",
-  "description": "Test RnRPort between content script and devtools",
+  "description": "Test ChannelPlate between content script and devtools",
    "web_accessible_resources": ["*"],
    "devtools_page" :  "test/extension/testDevtoolsPage.html",
    "content_scripts": [
      {
       "matches": ["http://*/*"],
-      "js": ["RnRPort.js", "test/extension/testContentScript.js"]
+      "js": ["ChannelPlate.js", "test/extension/testContentScript.js"]
      }
    ],
    "background_page" : "test/extension/background.html"

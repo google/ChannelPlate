@@ -1,1 +1,1 @@
-var proxy = new RnRPortChromeDevtoolsProxy();
+var proxy = new ChannelPlate.ChromeDevtoolsProxy();

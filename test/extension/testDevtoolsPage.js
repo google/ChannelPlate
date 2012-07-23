@@ -1,5 +1,5 @@
 
-var port = new RnRPortDevtoolsForeground(function onMessage(message) {
+var port = new ChannelPlate.DevtoolsTalker(function onMessage(message) {
   console.log("devtools got the message ", message);
 });
 

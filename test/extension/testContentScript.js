@@ -1,4 +1,4 @@
-var port = new RnRPortChromeForeground("content-script", function onMessage(message) {
+var port = new ChannelPlate.ContentScriptTalker("content-script", function onMessage(message) {
   console.log("ContentScript got the message ", message);
 });
 

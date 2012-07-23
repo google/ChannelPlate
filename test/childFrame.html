@@ -1,12 +1,11 @@
 <html>
 <head>
-<script src="../RnRPort.js"></script>
+<script src="../ChannelPlate.js"></script>
 <script>
 // Google BSD license http://code.google.com/google_bsd_license.html
 // Copyright 2011 Google Inc. johnjbarton@google.com
 
-
-var portToParent= new RnRChildIframePort(function(message) {
+var portToParent= new ChannelPlate.ChildIframe(function(message) {
   console.log(window.location + ' heard ' + message.data, message);
 });
 
