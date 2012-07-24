@@ -47,8 +47,12 @@ function getWebOrigin(href) {
 
 function Base(rawPort, onMessage) {
   if (rawPort) {
-    this.port = rawPort;  
-    this.port.onMessage.addListener(onMessage);
+    this.port = rawPort;
+    if (this.port.onMessage) { // chrome extension 
+      this.port.onMessage.addListener(onMessage);
+    } else {  // W3c
+      this.port.onmessage = onMessage;
+    }
   }
 }
 
@@ -225,30 +229,32 @@ DevtoolsTalker.prototype = Object.create(ContentScriptTalker.prototype);
 
 var ProxyBasePrototype = {
 
-  bind: function(port, connectionId, myPorts, otherPorts) {
-    var onMessage = this.proxyMessage.bind(this, connectionId, otherPorts);
-    var queueingPort = myPorts[connectionId];
+  addPort: function(port, connectionId, incomingPorts, outgoingPorts) {
+    var onMessage = this.proxyMessage.bind(this, connectionId, outgoingPorts);
+    var queueingPort = incomingPorts[connectionId];
     
     if (queueingPort) {
       queueingPort.accept(port, onMessage);
     } else {
-      myPorts[connectionId] = new Base(port, onMessage);
+      incomingPorts[connectionId] = new Base(port, onMessage);
     }
     
-    port.onDisconnect.addListener(function () {
-      delete myPorts[connectionId];
-    }.bind(this));
+    if (port.onDisconnect) {  // chrome extension
+      port.onDisconnect.addListener(function () {
+        delete incomingPorts[connectionId];
+      }.bind(this));
+    }
     
-    console.log("connect to "+port.name);
+    console.log("connect "+connectionId+" to "+port);
   }, 
 
-  proxyMessage: function(tabId, ports, message) {
-    var port = ports[tabId];
+  proxyMessage: function(tabId, outgoingPorts, message) {
+    var port = outgoingPorts[tabId];
     if (!port) { // no devtools open for the page
-      port = ports[tabId] = new Base();
+      port = outgoingPorts[tabId] = new Base();
     }    
     port.postMessage(message);
-    console.log("proxyMessage %o: %o", port, message);
+    console.log("proxyMessage to %o: %o", port, message);
   },
 }
 
@@ -257,16 +263,16 @@ var ProxyBasePrototype = {
 
 function ChromeDevtoolsProxy() {
   this.devtoolsPorts = {};
-  this.contentScriptPorts = {};
+  this.backgroundPorts = {};
 
   function onConnect(port) {
 
     if(port.name.indexOf('devtools') === 0) {
       var tabId = port.name.split('-')[1];
-      this.bind(port, tabId, this.devtoolsPorts, this.contentScriptPorts);
+      this.addPort(port, tabId, this.devtoolsPorts, this.backgroundPorts);
     } else {
       var tabId = port.sender.tab.id;
-      this.bind(port, tabId, this.contentScriptPorts, this.devtoolsPorts);
+      this.addPort(port, tabId, this.backgroundPorts, this.devtoolsPorts);
     }
   }
 
@@ -279,15 +285,12 @@ ChromeDevtoolsProxy.prototype = ProxyBasePrototype;
 // Match webpage ports to content-script ports and ferry messages between them.
 
 function ContentScriptProxy() {
-  this.contentScriptPorts = {};
+  this.backgroundPorts = {};
   this.webpagePorts = {};
 
-  // Listen for background connection.
-  //
-  function onConnect(port) { // This will be the background page
-    this.bind(port, 'background', this.webpagePorts, this.contentScriptPorts);
-  }
-  chrome.extension.onConnect.addListener(onConnect.bind(this));
+  /// This will be the background page
+  var port = chrome.extension.connect({name: 'content-script'});
+  this.addPort(port, 'content-script', this.backgroundPorts, this.webpagePorts);
 
   this.targetOrigin = getWebOrigin(window.location.href);
 
@@ -303,9 +306,9 @@ function ContentScriptProxy() {
       return;
     }
 
-    this.bind(port, 'webpage', this.contentScriptPorts, this.webpagePorts);
+    this.addPort(event.ports[0], 'content-script', this.webpagePorts, this.backgroundPorts);
     
-    // Once we bind to the child window stop listening for it to connect.
+    // Once we addPort to the child window stop listening for it to connect.
     //
     window.removeEventListener('message', onChannelPlate);
   }.bind(this);
@@ -316,11 +319,11 @@ function ContentScriptProxy() {
 
 ContentScriptProxy.prototype = ProxyBasePrototype;
 
-// NEXT test ContentScriptRnRProxy proxyMessage
-// TODO rename classes
-// TODO enclose in RrRPort module
-// TODO rename to CommonChannel CommonChannel.ContentScriptProxy CommonChannel.ChromeForeground
+//-----------------------------------------------------------------------------
+//  Ferry messages to window.parent
+function IframeProxy() {
 
+}
 
 //-----------------------------------------------------------------------------
 // Define our exports
