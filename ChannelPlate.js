@@ -98,7 +98,7 @@ function Talker(eventWindow, onMessage) {
   
   // One of the ports is kept as the local port
   this.port = this.channel.port1;
-  
+  console.log(window.location + " posting port");
   // The other port is sent to the remote side
   eventWindow.postMessage('ChannelPlate', this.targetOrigin, [this.channel.port2]);
 
@@ -136,18 +136,19 @@ WebPage.prototype = Object.create(Talker.prototype);
 function Listener(clientURL, onMessage) {
   assertFunction(onMessage);
 
-  this.targetOrigin = getWebOrigin(clientURL);
+  // If the url is relative the origin will match window.location
+  this.targetOrigin = getWebOrigin(clientURL) || getWebOrigin(window.location.toString());
 
   // The instance properties will not be set until we are sent a valid event
   //
   var onChannelPlate = function(event) {
-
+console.log('event.data ' + event.data);
     if (event.data !== 'ChannelPlate') {
       return;
     } 
 
-    // We must be contacted by the childIframe after it has a valid contentWindow.
-    if (this.targetOrigin !== event.origin) {
+    if (event.origin !== "null" && this.targetOrigin !== event.origin) {
+      // The event.origin was either unexpected or unset.
       return;
     }
 
@@ -164,6 +165,7 @@ function Listener(clientURL, onMessage) {
   }.bind(this);
 
   window.addEventListener('message', onChannelPlate);
+  
 }
 
 Listener.prototype = Object.create(Base.prototype);
@@ -171,8 +173,9 @@ Listener.prototype = Object.create(Base.prototype);
 //-----------------------------------------------------------------------------
 // For communicating from a window to an iframe child
 
-function Parent(childIframe, onMessage) {
-  Listener.call(this, childIframe.src, onMessage);
+function Parent(childIframe, childURL, onMessage) {
+  Listener.call(this, childURL, onMessage);
+  childIframe.src = childURL;
 }
 
 Parent.prototype = Object.create(Listener.prototype);
