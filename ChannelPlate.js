@@ -84,6 +84,39 @@ Base.prototype = {
 };
 
 //-----------------------------------------------------------------------------
+// Simple RPC using [seqId, methodName, arg1, arg2, ...]
+// Replies [seqId, methodName, return1, return2, ...] OR
+//  Errs [seqId, methodName_err, return1, return2, ...]
+
+function RequestResponder(rawPort) {
+  Base.call(this, rawPort);
+}
+
+RequestResponder.prototype = Object.create(Base.prototype);
+
+RequestResponder.prototype.onMessage = function(message) {
+  var payloadArray = message;
+  var postId = payloadArray.shift();
+  var method = payloadArray.shift();
+  if (method in this && (typeof this[method] === 'function') ) {
+    var args = payloadArray;
+    args.push(this.onReply.bind(this, postId, method));
+    args.push(this.onError.bind(this, postId, method));
+    this[method].apply(this, args);
+  } else {
+    this.onError(postId, method, "No Such Method");
+  }
+};
+
+RequestResponder.prototype.onReply =function(postId, method, args) {
+  this.postMessage([postId, method].concat(args));
+};
+
+RequestResponder.prototype.onError = function(postId, method, args) {
+  this.postMessage([postId, method + "_err"].concat(args));
+};
+
+//-----------------------------------------------------------------------------
 //  Client using eventWindow.postMessaage to send port
 
 function Talker(eventWindow, onMessage) {
@@ -142,8 +175,8 @@ function Listener(clientURL, onMessage) {
   // The instance properties will not be set until we are sent a valid event
   //
   var onChannelPlate = function(event) {
-console.log('event.data ' + event.data);
     if (event.data !== 'ChannelPlate') {
+      // We are a port-creator for ChannelPlate, nothing else.
       return;
     } 
 
@@ -153,7 +186,6 @@ console.log('event.data ' + event.data);
     }
 
     this.port = event.ports[0];
-    
     this.port.onmessage = onMessage;
 
     // Send pending messages
@@ -181,23 +213,28 @@ function Parent(childIframe, childURL, onMessage) {
 Parent.prototype = Object.create(Listener.prototype);
 
 //-----------------------------------------------------------------------------
-// For background pages listening for 
-// foreground pages by name.
+// For background pages listening for foreground connections
+// Create a new Listener port for each foreground contact
 
-function ChromeBackground(waitForName, onMessage) {
-  this.becomeListener(waitForName, onMessage);
+function ChromeBackground(rawPort) {
+  Base.call(this, rawPort, this.onMessage.bind(this));
 }
 
-ChromeBackground.prototype = Object.create(Base.prototype);
+ChromeBackground.prototype = Object.create(RequestResponder.prototype);
 
-ChromeBackground.prototype.becomeListener = function(theirName, onMessage) {
-  console.log(window.location + " becomeListener for "+theirName);
+// Class methods
+ChromeBackground.foregroundPorts = {};
+
+ChromeBackground.startAccepter = function(TypeCtorOfPort) {
   function onConnect(port) {
     console.log("onConnect ", port)
-    if (port.name === theirName) {
-      this.port = port;
-      this.port.onMessage.addListener(onMessage);
-      this.drainQueue();
+    if (!this.foregroundPorts.hasOwnProperty(port.name)) {
+      console.log(window.location + " accept "+ port.name);
+      this.foregroundPorts[port.name] = new TypeCtorOfPort(port);
+      port.onDisconnect.addListener(function() {
+        console.log("onDisconnect "+port.name);
+        delete this.foregroundPorts[port.name];
+      }.bind(this))
     }
   }
   chrome.extension.onConnect.addListener(onConnect.bind(this));
@@ -217,7 +254,7 @@ function ContentScriptTalker(myName, onMessage) {
   this.port.onMessage.addListener(onMessage);
 }
 
-ContentScriptTalker.prototype = Object.create(ChromeBackground.prototype);
+ContentScriptTalker.prototype = Object.create(Base.prototype);
 
 
 function DevtoolsTalker(onMessage) {
