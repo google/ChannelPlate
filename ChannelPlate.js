@@ -296,7 +296,7 @@ ContentScriptTalker.prototype = Object.create(Base.prototype);
 
 
 function DevtoolsTalker(onMessage) {
-  var name = "devtools-" + chrome.devtools.inspectedWindow.tabId;
+  var name = encodeURIComponent(window.location.href).replace(/[!'()*]/g, '_');
   ContentScriptTalker.call(this, name, onMessage);
 }
 
