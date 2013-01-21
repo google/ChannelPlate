@@ -169,7 +169,7 @@ function Talker(eventWindow, onMessage) {
   
   // One of the ports is kept as the local port
   this.port = this.channel.port1;
-  console.log(window.location + " posting port");
+  
   // The other port is sent to the remote side
   eventWindow.postMessage('ChannelPlate', this.targetOrigin, [this.channel.port2]);
 
@@ -243,9 +243,9 @@ Listener.prototype = Object.create(Base.prototype);
 //-----------------------------------------------------------------------------
 // For communicating from a window to an iframe child
 
-function Parent(childIframe, childURL, onMessage) {
-  Listener.call(this, childURL, onMessage);
-  childIframe.src = childURL;
+function Parent(existingChildIframe, srcURLToAssign, onMessage) {
+  Listener.call(this, srcURLToAssign, onMessage);
+  existingChildIframe.src = srcURLToAssign;
 }
 
 Parent.prototype = Object.create(Listener.prototype);
