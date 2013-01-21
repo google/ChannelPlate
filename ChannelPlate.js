@@ -83,76 +83,6 @@ Base.prototype = {
   }
 };
 
-//-----------------------------------------------------------------------------
-// Simple RPC using [seqId, methodName, arg1, arg2, ...]
-// Replies [seqId, methodName, return1, return2, ...] OR
-//  Errs [seqId, methodName_err, return1, return2, ...]
-
-function RequestResponder(rawPort) {
-  Base.call(this, rawPort);
-}
-
-RequestResponder.prototype = Object.create(Base.prototype);
-
-RequestResponder.prototype.onMessage = function(message) {
-  var payloadArray = message;
-  var postId = payloadArray.shift();
-  var method = payloadArray.shift();
-  if (method in this && (typeof this[method] === 'function') ) {
-    var args = payloadArray;
-    args.push(this.onReply.bind(this, postId, method));
-    args.push(this.onError.bind(this, postId, method));
-    this[method].apply(this, args);
-  } else {
-    this.onError(postId, method, "No Such Method");
-  }
-};
-
-RequestResponder.prototype.onReply =function(postId, method, args) {
-  this.postMessage([postId, method].concat(args));
-};
-
-RequestResponder.prototype.onError = function(postId, method, args) {
-  this.postMessage([postId, method, "Error"].concat(args));
-};
-
-
-function RequestCreator(ChannelPlateCtor) {
-  this.postId = 0;
-  this.responseHandlers = [];
-  this.port = new ChannelPlateCtor(this._onMessage.bind(this));
-}
-
-RequestCreator.prototype = {
-
-  request: function(method, args, onResponse) {
-    this.responseHandlers[++this.postId] = {method: method, onResponse: onResponse};
-    this.port.postMessage([this.postId, method].concat(args));
-  },
-
-  _onMessage: function(message) {
-    var payloadArray = message;
-    var postId = payloadArray.shift();
-    var method = payloadArray.shift();
-    var responseHandler = this.responseHandlers[postId];
-    if (method === responseHandler.method) {
-      var args = payloadArray;
-      var callback = responseHandler.onResponse;
-      try {
-        if (callback) {
-          callback.apply(this, args);
-        }  
-      } catch(exc) {
-        console.error("RequestCreator callback failed: "+(exc.stack ?"\n %o":exc), exc.stack);
-      } finally {
-        delete this.responseHandlers[postId];
-      }
-    } else {
-      console.error("RequestCreator protocol error, remote method does not match local method");
-    }
-  }
-  
-};
 
 //-----------------------------------------------------------------------------
 //  Client using eventWindow.postMessaage to send port
@@ -250,33 +180,6 @@ function Parent(existingChildIframe, srcURLToAssign, onMessage) {
 
 Parent.prototype = Object.create(Listener.prototype);
 
-//-----------------------------------------------------------------------------
-// For background pages listening for foreground connections
-// Create a new Listener port for each foreground contact
-
-function ChromeBackground(rawPort) {
-  Base.call(this, rawPort, this.onMessage.bind(this));
-}
-
-ChromeBackground.prototype = Object.create(RequestResponder.prototype);
-
-// Class methods
-ChromeBackground.foregroundPorts = {};
-
-ChromeBackground.startAccepter = function(TypeCtorOfPort) {
-  function onConnect(port) {
-    console.log("onConnect ", port)
-    if (!this.foregroundPorts.hasOwnProperty(port.name)) {
-      console.log(window.location + " accept "+ port.name);
-      this.foregroundPorts[port.name] = new TypeCtorOfPort(port);
-      port.onDisconnect.addListener(function() {
-        console.log("onDisconnect "+port.name);
-        delete this.foregroundPorts[port.name];
-      }.bind(this))
-    }
-  }
-  chrome.extension.onConnect.addListener(onConnect.bind(this));
-}
 
 //-----------------------------------------------------------------------------
 // For foreground pages to contact background pages.
@@ -417,8 +320,6 @@ return {
   ChildIframe: ChildIframe,
   // Starts channels from web pages to chrome content scripts
   WebPage: WebPage,
-  // Waits for connection events from content scripts
-  ChromeBackground: ChromeBackground,
   // Starts channels from chrome content scripts to background 
   ContentScriptTalker: ContentScriptTalker,
   // Starts channels from devtools to background
@@ -427,8 +328,6 @@ return {
   ContentScriptProxy: ContentScriptProxy,
   // Waits for devtools and background then forward between
   ChromeDevtoolsProxy: ChromeDevtoolsProxy,
-  // Accepts a port constructor and sends requests thru it
-  RequestCreator: RequestCreator
 };
 
 }());
