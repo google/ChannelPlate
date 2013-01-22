@@ -2,8 +2,12 @@
 // Copyright 2011 Google Inc. johnjbarton@google.com
 
 // ChannelPlate:  a switchplate, covering over API differences in MessageChannel APIs.
+//  Pass your onMessage handler to the constructor, 
+//  send your messages via method postMessage(message)
 
 var ChannelPlate = (function channelPlateModule() {
+
+"use strict";
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -48,21 +52,12 @@ function getWebOrigin(href) {
 function Base(rawPort, onMessage) {
   if (rawPort) {
     this.port = rawPort;
-    if (this.port.onMessage) { // chrome extension 
-      this.port.onMessage.addListener(onMessage);
-    } else {  // W3c
-      this.port.onmessage = onMessage;
-    }
+    if (onMessage) 
+      this.onmessage = onMessage; 
   }
 }
 
 Base.prototype = {
-
-  accept: function(port, onMessage) {
-    this.port = port;
-    this.port.onMessage.addListener(onMessage);
-    this.drainQueue();
-  },
 
   postMessage: function(message) {
     if (this.port) {
@@ -73,7 +68,23 @@ Base.prototype = {
     }
   },
 
-  drainQueue: function() {
+  set onmessage(onMessage) {
+    if (this.port.onMessage) { // chrome extension 
+      this.port.onMessage.addListener(onMessage);
+    } else {  // W3c, implicitly calls start()
+      this.port.onmessage = onMessage;
+    }
+  }, 
+
+  accept: function(port, onMessage) {
+    this.port = port;
+    if (onMessage) {
+      this.onmessage = onMessage;
+    }
+    this._drainQueue();
+  },
+
+  _drainQueue: function() {
     if (this.queue) {
       this.queue.forEach(function(message) {
         this.postMessage(message);
@@ -132,13 +143,15 @@ function WebPage(onMessage) {
 WebPage.prototype = Object.create(Talker.prototype);
 
 //-----------------------------------------------------------------------------
-// web window Server, listening for connection 
+// web window Server, listening for connection  
 
-function Listener(clientURL, onMessage) {
+function Listener(clientWebOriginOrURL, onMessage) {
   assertFunction(onMessage);
 
+  Base.call(this);
+
   // If the url is relative the origin will match window.location
-  this.targetOrigin = getWebOrigin(clientURL) || getWebOrigin(window.location.toString());
+  this.targetOrigin = getWebOrigin(clientWebOriginOrURL) || getWebOrigin(window.location.toString());
 
   // The instance properties will not be set until we are sent a valid event
   //
@@ -153,19 +166,15 @@ function Listener(clientURL, onMessage) {
       return;
     }
 
-    this.port = event.ports[0];
-    this.port.onmessage = onMessage;
-
     // Send pending messages
-    this.drainQueue();
-    
-    // Once we bind to the child window stop listening for it to connect.
+    this.accept(event.ports[0], onMessage);
+  
+    // Once we bind to the child window, stop listening for it to connect.
     //
     window.removeEventListener('message', onChannelPlate);
   }.bind(this);
 
   window.addEventListener('message', onChannelPlate);
-  
 }
 
 Listener.prototype = Object.create(Base.prototype);
@@ -175,6 +184,9 @@ Listener.prototype = Object.create(Base.prototype);
 
 function Parent(existingChildIframe, srcURLToAssign, onMessage) {
   Listener.call(this, srcURLToAssign, onMessage);
+  if (!existingChildIframe) {
+    throw new Error("First argument must be an existing iframe");
+  }
   existingChildIframe.src = srcURLToAssign;
 }
 
