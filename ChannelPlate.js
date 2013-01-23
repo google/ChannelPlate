@@ -8,6 +8,7 @@
 var ChannelPlate = (function channelPlateModule() {
 
 "use strict";
+var DEBUG = false;
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -51,11 +52,11 @@ function getWebOrigin(href) {
 
 function Base(rawPort, onMessage) {
   if (rawPort) {
-    this.port = rawPort;
-    if (onMessage) 
-      this.onmessage = onMessage; 
+    this.assign(rawPort, onMessage); 
   }
 }
+
+Base.channelPlates = 0;
 
 Base.prototype = {
 
@@ -69,19 +70,30 @@ Base.prototype = {
   },
 
   set onmessage(onMessage) {
-    if (this.port.onMessage) { // chrome extension 
-      this.port.onMessage.addListener(onMessage);
-    } else {  // W3c, implicitly calls start()
-      this.port.onmessage = onMessage;
+    function repackage(event) {
+      onMessage(event.data, event);
     }
+    if (this.port.onMessage) { // chrome extension 
+      this.port.onMessage.addListener(repackage);
+    } else {  // W3c, implicitly calls start()
+      this.port.onmessage = repackage;
+    }
+    if (this.port.plate !== this) 
+      console.error("mismatched plates");
   }, 
 
   accept: function(port, onMessage) {
+    this._assign(port, onMessage);
+    this._drainQueue();
+  },
+
+  _assign: function(port, onMessage) {
     this.port = port;
+    this.plateNumber = ++Base.channelPlates;
+    this.port.plate = this;
     if (onMessage) {
       this.onmessage = onMessage;
     }
-    this._drainQueue();
   },
 
   _drainQueue: function() {
@@ -145,11 +157,18 @@ WebPage.prototype = Object.create(Talker.prototype);
 //-----------------------------------------------------------------------------
 // web window Server, listening for connection  
 
-function Listener(clientWebOriginOrURL, onMessage) {
-  assertFunction(onMessage);
-
+function Listener(onMessage) {
+  if (onMessage) {
+    assertFunction(onMessage);
+    this.onMessage = onMessage;
+  } 
+    
   Base.call(this);
+}
 
+Listener.prototype = Object.create(Base.prototype);
+
+Listener.prototype.start = function(clientWebOriginOrURL) {
   // If the url is relative the origin will match window.location
   this.targetOrigin = getWebOrigin(clientWebOriginOrURL) || getWebOrigin(window.location.toString());
 
@@ -167,31 +186,77 @@ function Listener(clientWebOriginOrURL, onMessage) {
     }
 
     // Send pending messages
-    this.accept(event.ports[0], onMessage);
+    this.accept(event.ports[0], this.onMessage);
   
     // Once we bind to the child window, stop listening for it to connect.
     //
     window.removeEventListener('message', onChannelPlate);
+    if (DEBUG) {
+      console.log('stop listening in ' + window.location.href);
+    }
   }.bind(this);
+
+  if (DEBUG) {
+    console.log('start listening in ' + window.location.href);
+  }
 
   window.addEventListener('message', onChannelPlate);
 }
 
-Listener.prototype = Object.create(Base.prototype);
-
 //-----------------------------------------------------------------------------
 // For communicating from a window to an iframe child
 
-function Parent(existingChildIframe, srcURLToAssign, onMessage) {
-  Listener.call(this, srcURLToAssign, onMessage);
-  if (!existingChildIframe) {
-    throw new Error("First argument must be an existing iframe");
-  }
-  existingChildIframe.src = srcURLToAssign;
+function Parent(onMessage) {
+  Listener.call(this, onMessage);
 }
 
-Parent.prototype = Object.create(Listener.prototype);
+Parent.prototype = {
+  __proto__: Listener.prototype,
 
+  start: function(existingChildIframe, srcURLToAssign) {
+    Listener.prototype.start.call(this, srcURLToAssign);
+    if (!existingChildIframe) {
+      throw new Error("First argument must be an existing iframe");
+    }
+    existingChildIframe.src = srcURLToAssign;    
+  }
+}
+
+
+    //-----------------------------------------------------------------------------
+    // For background pages listening for foreground connections
+    // Create a new Listener port for each foreground contact
+
+    function ChromeBackgroundListener(onMessage) {
+      this._onMessage = onMessage;
+      Base.call(this);  
+    }
+
+    ChromeBackgroundListener.prototype = {
+      __proto__: Base.prototype,
+
+      start: function() {
+        var onConnect = function(port) {
+          if (DEBUG) { 
+            console.log("onConnect ", port)
+          }
+          if (DEBUG) {
+            console.log(window.location + " accept "+ port.name);
+          }
+
+          this.accept(port, this._onMessage);
+
+          port.onDisconnect.addListener(function() {
+            if (DEBUG) {
+              console.log("onDisconnect " + port.name);  
+            }
+          }.bind(this));
+          chrome.extension.onConnect.removeListener(onConnect);
+        }.bind(this);
+
+        chrome.extension.onConnect.addListener(onConnect);        
+      }
+    };
 
 //-----------------------------------------------------------------------------
 // For foreground pages to contact background pages.
@@ -313,10 +378,6 @@ function ContentScriptProxy() {
 ContentScriptProxy.prototype = ProxyBasePrototype;
 
 //-----------------------------------------------------------------------------
-//  Ferry messages to window.parent
-function IframeProxy() {
-
-}
 
 //-----------------------------------------------------------------------------
 // Define our exports

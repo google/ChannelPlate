@@ -3,30 +3,27 @@
 
 // Add this to the manifest.json:
 // "background": {
-//      "scripts": ["ChannelPlate/ChannelPlate.js", "ChannelPlate/ChannelPlateBackground.js"] // workaround CSP
+//      "scripts": ["ChannelPlate/ChannelPlate.js", "ChannelPlate/RemoteMethodCall.js", ChannelPlate/ChannelPlateBackground.js"] // workaround CSP
 //    },
 
-function ChannelPlateBackground(rawPort) {
-  ChannelPlate.ChromeBackground.call(this, rawPort);
-}
 
-var debug = false;
+var DEBUG = false;
 
-ChannelPlateBackground.prototype = Object.create(ChannelPlate.ChromeBackground.prototype);
+var ChromeBackgroundMethods = {};
 
 // Cross site XHR, xhr(url) -> content 
 //
-ChannelPlateBackground.prototype.request = function(method, url, callback, errback) {
+ChromeBackgroundMethods.request = function(method, url, callback, errback) {
   var xhr = new XMLHttpRequest();
   xhr.open(method, url);
   xhr.addEventListener('load', function(e) {
     if (xhr.status == 200 || xhr.status == 0) {
-      if (debug) 
+      if (DEBUG) 
         console.log("end xhr "+url);
       
       callback(xhr.responseText);
     } else {
-      if (debug) 
+      if (DEBUG) 
         console.error("err xhr "+url);
 
       errback(xhr.status);
@@ -43,27 +40,28 @@ ChannelPlateBackground.prototype.request = function(method, url, callback, errba
 
 // Cross site XHR, xhr(url) -> content 
 //
-ChannelPlateBackground.prototype.xhr = function(url, callback, errback) {
-  if (debug)
+ChromeBackgroundMethods.xhr = function(url, callback, errback) {
+  if (DEBUG)
     console.log("start xhr "+url);
   this.request('GET', url, callback, errback);
 };
 
-ChannelPlateBackground.prototype.GET = function(url, callback, errback) {
+ChromeBackgroundMethods.GET = function(url, callback, errback) {
   this.request('GET', url, callback, errback);
 };
 
 // Cross site XHR WebDAV, xhr(url) -> content 
 //
-ChannelPlateBackground.prototype.PUT = function(url, callback, errback) {
+ChromeBackgroundMethods.PUT = function(url, callback, errback) {
   this.request('PUT', url, callback, errback);
 };
 
 // Cross site XHR WebDAV, xhr(url) -> content 
 //
-ChannelPlateBackground.prototype.PROPFIND = function(url, callback, errback) {
+ChromeBackgroundMethods.PROPFIND = function(url, callback, errback) {
   this.request('PROPFIND', url, callback, errback);
 };
 
 
-ChannelPlate.ChromeBackground.startAccepter(ChannelPlateBackground);
+var server = new RemoteMethodCall.Responder(BackgroundServerMethods, ChannelPlate.ChromeBackgroundListener);
+    server.start();

@@ -7,20 +7,29 @@
 
 var debug = false;
 
-var portToParent= new ChannelPlate.ChildIframe(function(message) {
+// Low-level incoming API implements test
+//
+function onMessage(message) {
   if (message.data === "hello child") {
-  	console.log("PASS: child hears")
+    console.log("PASS: child hears")
   } else {
-  	console.log('FAIL: '+window.location + ' heard ' + message.data, message);
+    console.log('FAIL: '+window.location + ' heard ' + message.data, message);
   }
-});
+}
+
+var portToParent= new ChannelPlate.ChildIframe(onMessage);
+
 if (debug) {
   console.log("child listening for parent");
 }
+
+// Low-level outgoing API continues test
+//
 portToParent.postMessage("mommy?");
+
 </script>
 </head>
 <body>
-<p>Open the debugging console to see the conversation logged</p>
+<p>Open the debugging console to see the test results</p>
 </body>
 </html>
