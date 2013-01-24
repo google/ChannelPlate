@@ -74,7 +74,7 @@ Base.prototype = {
       onMessage(event.data, event);
     }
     if (this.port.onMessage) { // chrome extension 
-      this.port.onMessage.addListener(repackage);
+      this.port.onMessage.addListener(onMessage);
     } else {  // W3c, implicitly calls start()
       this.port.onmessage = repackage;
     }
@@ -401,6 +401,8 @@ return {
   ContentScriptProxy: ContentScriptProxy,
   // Waits for devtools and background then forward between
   ChromeDevtoolsProxy: ChromeDevtoolsProxy,
+  // Waits for extension connection, creates ChannelPlate connection.
+  ChromeBackgroundListener: ChromeBackgroundListener,
 };
 
 }());

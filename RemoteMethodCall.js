@@ -27,7 +27,7 @@ var RemoteMethodCall = (function() {
           args.push(this.onReply.bind(this, postId, method));
           args.push(this.onError.bind(this, postId, method));
           try {
-            this.serverMethods[method].apply(this, args); 
+            this.serverMethods[method].apply(this.serverMethods, args); 
           } catch (exc) {
             this.onException(postId, method, [exc]);
           }
@@ -78,7 +78,7 @@ var RemoteMethodCall = (function() {
       },
 
       _onMessage: function(event) {
-        var payloadArray = event.data;
+        var payloadArray = event.data || event; // w3C || chrome extension
         var postId = payloadArray.shift();
         var method = payloadArray.shift();
         var responseHandler = this.responseHandlers[postId];

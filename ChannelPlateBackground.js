@@ -63,5 +63,5 @@ ChromeBackgroundMethods.PROPFIND = function(url, callback, errback) {
 };
 
 
-var server = new RemoteMethodCall.Responder(BackgroundServerMethods, ChannelPlate.ChromeBackgroundListener);
+var server = new RemoteMethodCall.Responder(ChromeBackgroundMethods, ChannelPlate.ChromeBackgroundListener);
     server.start();
