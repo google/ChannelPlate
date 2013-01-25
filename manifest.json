@@ -7,7 +7,7 @@
   "description": "Test/Demo extension for ChannelPlate",
    "devtools_page": "test/extension/testDevtoolsPage.html",
     "background": {
-      "scripts": ["ChannelPlate.js", "RemoteMethodCall.js", "ChannelPlateBackground.js"] // workaround CSP
+      "scripts": ["ChannelPlate.js", "RemoteMethodCall.js", "XHRInBackground.js"] // workaround CSP
     },
   "permissions" :
     [

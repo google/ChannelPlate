@@ -1,11 +1,11 @@
 
 
-var ChromeBackgroundMethods = {
+var XHRInBackground = {
 	GET: function(url, callback, errback) {}
 };
 
 
-var proxy = (new RemoteMethodCall.Requestor(ChromeBackgroundMethods, ChannelPlate.DevtoolsTalker)).serverProxy();
+var proxy = (new RemoteMethodCall.Requestor(XHRInBackground, ChannelPlate.DevtoolsTalker)).serverProxy();
     proxy.GET(
     	'http://example.com',
     	function(result) {

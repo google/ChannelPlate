@@ -3,7 +3,7 @@
 
 // Add this to the manifest.json:
 // "background": {
-//      "scripts": ["ChannelPlate/ChannelPlate.js", "ChannelPlate/RemoteMethodCall.js", ChannelPlate/ChannelPlateBackground.js"] // workaround CSP
+//      "scripts": ["ChannelPlate/ChannelPlate.js", "ChannelPlate/RemoteMethodCall.js", ChannelPlate/XHRInBackground.js"] // workaround CSP
 //    },
 
 
@@ -19,11 +19,11 @@ if (DEBUG) {
   }, 5000);
 }
 
-var ChromeBackgroundMethods = {};
+var XHRInBackground = {};
 
 // Cross site XHR, xhr(url) -> content 
 //
-ChromeBackgroundMethods.request = function(method, url, callback, errback) {
+XHRInBackground.request = function(method, url, callback, errback) {
   if (!callback || !errback) {
     throw new Error("Both callback and errback functions are required");
   }
@@ -54,28 +54,28 @@ ChromeBackgroundMethods.request = function(method, url, callback, errback) {
 
 // Cross site XHR, xhr(url) -> content 
 //
-ChromeBackgroundMethods.xhr = function(url, callback, errback) {
+XHRInBackground.xhr = function(url, callback, errback) {
   if (DEBUG)
     console.log("start xhr "+url);
   this.request('GET', url, callback, errback);
 };
 
-ChromeBackgroundMethods.GET = function(url, callback, errback) {
+XHRInBackground.GET = function(url, callback, errback) {
   this.request('GET', url, callback, errback);
 };
 
 // Cross site XHR WebDAV, xhr(url) -> content 
 //
-ChromeBackgroundMethods.PUT = function(url, callback, errback) {
+XHRInBackground.PUT = function(url, callback, errback) {
   this.request('PUT', url, callback, errback);
 };
 
 // Cross site XHR WebDAV, xhr(url) -> content 
 //
-ChromeBackgroundMethods.PROPFIND = function(url, callback, errback) {
+XHRInBackground.PROPFIND = function(url, callback, errback) {
   this.request('PROPFIND', url, callback, errback);
 };
 
 
-var server = new RemoteMethodCall.Responder(ChromeBackgroundMethods, ChannelPlate.ChromeBackgroundListener);
+var server = new RemoteMethodCall.Responder(XHRInBackground, ChannelPlate.ChromeBackgroundListener);
     server.start();
