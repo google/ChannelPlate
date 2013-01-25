@@ -251,7 +251,6 @@ Parent.prototype = {
               console.log("onDisconnect " + port.name);  
             }
           }.bind(this));
-          chrome.extension.onConnect.removeListener(onConnect);
         }.bind(this);
 
         chrome.extension.onConnect.addListener(onConnect);        
