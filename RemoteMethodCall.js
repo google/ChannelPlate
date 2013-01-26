@@ -14,7 +14,7 @@ var RemoteMethodCall = (function() {
     // A ChannelPlate Listener that converts requests to method calls and 
     // returns to responses
 
-    function Responder(serverMethods, ctorOfOnMessage) {
+    function Responder(serverMethods, rawPort) {
       this.serverMethods = serverMethods;
     
       this.onMessage = function(message) {
@@ -52,7 +52,7 @@ var RemoteMethodCall = (function() {
         this.channelPlate.start.apply(this.channelPlate, arguments);
       }
 
-      this.channelPlate = new ctorOfOnMessage(this.onMessage.bind(this));
+      this.channelPlate = new ChannelPlate.Base(rawPort, this.onMessage.bind(this));
     }
 
     //---------------------------------------------------------------------------------------
