@@ -162,6 +162,10 @@ function Listener(clientWebOriginOrURL, onConnect) {
   var targetOrigin = getWebOrigin(clientWebOriginOrURL) || getWebOrigin(window.location.toString());
 
   function onChannelPlate(event) {
+    if (DEBUG) {
+      console.log("ChannelPlate.Listener.onChannelPlate for targetOrigin " + targetOrigin, event)
+    }
+
     if (!event.data || !event.data[0] || event.data[0] !== 'ChannelPlate') {
       // We are a port-creator for ChannelPlate, nothing else.
       return;
