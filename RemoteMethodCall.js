@@ -29,7 +29,8 @@ var RemoteMethodCall = (function() {
           try {
             this.serverMethods[method].apply(this.serverMethods, args); 
           } catch (exc) {
-            this.onException(postId, method, [exc]);
+            var jsonableExc = {message: exc.message, stack: exc.stack};
+            this.onException(postId, method, [jsonableExc]);
           }
         } else {
           this.onException(postId, method, ['No Such Method']);
