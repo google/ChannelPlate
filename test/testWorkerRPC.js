@@ -1,11 +1,9 @@
-<html>
-<head>
-<script src="../ChannelPlate.js"></script>
-<script src="../ChildIframeChannelPlate.js"></script>
-<script src="../RemoteMethodCall.js"></script>
-<script>
 // Google BSD license http://code.google.com/google_bsd_license.html
 // Copyright 2013 Google Inc. johnjbarton@google.com
+
+importScripts("../ChannelPlate.js");
+importScripts("../WorkerChannelPlate.js");
+importScripts("../RemoteMethodCall.js");
 
 var DEBUG = false;
 var TIME_LIMIT = 1000;
@@ -18,10 +16,11 @@ var timeoutId = setTimeout(tookTooLong, TIME_LIMIT);
 
 var serverMethods = {
 	add: function(lhs, rhs, resultsBack, errBack){},
-	div: function(lhs, rhs, resultsBack, errBack){}
+	div: function(lhs, rhs, resultsBack, errBack){},
+	terminate: function(lhs, rhs, resultsBack, errBack){}
 }
 
-var proxy = (new RemoteMethodCall.Requestor(serverMethods, ChannelPlate.ChildIframeChannelPlate)).serverProxy();
+var proxy = (new RemoteMethodCall.Requestor(serverMethods, ChannelPlate.WorkerChannelPlate)).serverProxy();
 
 proxy.add(2,2, function(result){
 	if (result === 4) {
@@ -36,14 +35,12 @@ proxy.add(2,2, function(result){
 		},
 		function (err) {
 			console.log('PASS: ' + err);
+			proxy.terminate(function(){
+				console.log('PASS terminate');
+			}, function() {
+				console.log('FAIL terminate');
+			});
 			clearTimeout(timeoutId);
 		}
 	);
 });
-
-</script>
-</head>
-<body>
-<p>Open the DEBUGging console to see the test results</p>
-</body>
-</html>

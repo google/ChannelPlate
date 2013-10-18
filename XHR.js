@@ -3,12 +3,12 @@
 
 (function(){
 
-    var xhrFromBackground = (new RemoteMethodCall.Requestor(XHRInBackground, ChannelPlate.DevtoolsTalker)).serverProxy();
+    var xhrFromBackground = (new RemoteMethodCall.Requestor(XHRInBackground, ChannelPlate.DevtoolsPortClient)).serverProxy();
 
     var XHR = {
       asyncLoadInBackground: function(url, fncOfContent) {
         xhrFromBackground.GET(
-          [url], 
+          [url],
           function(content) {
             fncOfContent(content);
           },
@@ -35,7 +35,7 @@
         xhr.send();
         return xhr;
       }
-      
+
     };
 
     window.XHR = XHR;

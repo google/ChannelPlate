@@ -1,6 +1,7 @@
 <html>
 <head>
 <script src="../ChannelPlate.js"></script>
+<script src="../ChannelPlateConnectedIframe.js"></script>
 <script src="../RemoteMethodCall.js"></script>
 </head>
 <body>
@@ -39,7 +40,7 @@ function onMessage(message) {
 
 // After we listen for messages we navigate the frame.
 
-ChannelPlate.Parent(childFrame, "childFrame.html", function(rawPort){
+ChannelPlate.ConnectedIframe(childFrame, "childFrame.html", function(rawPort){
     var portToChild = new ChannelPlate.Base(rawPort, onMessage);
     // Low-level outgoing API call starts test
     //
@@ -68,10 +69,10 @@ function nextTest() {
                 callback(lhs/rhs);
             }
         }
-    } 
+    }
 
     var server;
-    ChannelPlate.Parent(clientFrame, "clientFrame.html", function(rawPort){
+    ChannelPlate.ConnectedIframe(clientFrame, "clientFrame.html", function(rawPort){
         server = new RemoteMethodCall.Responder(serverTestMethods, rawPort);
     });
 

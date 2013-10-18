@@ -1,10 +1,8 @@
-<html>
-<head>
-<script src="../ChannelPlate.js"></script>
-<script src="../ChildIframeChannelPlate.js"></script>
-<script>
 // Google BSD license http://code.google.com/google_bsd_license.html
-// Copyright 2011 Google Inc. johnjbarton@google.com
+// Copyright 2013 Google Inc. johnjbarton@google.com
+
+importScripts("../ChannelPlate.js");
+importScripts("../WorkerChannelPlate.js");
 
 var debug = false;
 
@@ -17,8 +15,9 @@ function onMessage(message) {
     console.log('FAIL: '+window.location + ' heard ' + message.data, message);
   }
 }
+console.log("ChannelPlate " + Object.keys(ChannelPlate).join(','));
 
-var portToParent= new ChannelPlate.ChildIframeChannelPlate(onMessage);
+var portToParent = new ChannelPlate.WorkerChannelPlate(onMessage);
 
 if (debug) {
   console.log("child listening for parent");
@@ -27,10 +26,3 @@ if (debug) {
 // Low-level outgoing API continues test
 //
 portToParent.postMessage("mommy?");
-
-</script>
-</head>
-<body>
-<p>Open the debugging console to see the test results</p>
-</body>
-</html>

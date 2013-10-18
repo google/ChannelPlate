@@ -114,7 +114,7 @@ var RemoteMethodCall = (function() {
             console.log("RemoteMethodCall.Requestor._onMessage " + postId + ": " + method + ": " + status, args);
           }  
         } catch(exc) {
-          console.error("Requestor "+ this.instance + " callback failed: "+(exc.stack ?"\n %o":exc), exc.stack);
+          console.error("Requestor "+ this.instance + " callback failed: "+(exc.stack ?exc.stack:exc), exc.stack);
         } finally {
           delete this.responseHandlers[postId];
         }
