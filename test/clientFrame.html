@@ -1,8 +1,7 @@
 <html>
 <head>
 <script src="../ChannelPlate.js"></script>
-<script src="../ChildIframeChannelPlate.js"></script>
-<script src="../RemoteMethodCall.js"></script>
+<script src="../iframe.js"></script>
 <script>
 // Google BSD license http://code.google.com/google_bsd_license.html
 // Copyright 2013 Google Inc. johnjbarton@google.com
@@ -11,39 +10,45 @@ var DEBUG = false;
 var TIME_LIMIT = 1000;
 
 function tookTooLong() {
-	console.log('FAIL: server did not respond within ' + TIME_LIMIT + ' millisecs.')
+    output('FAIL: server did not respond within ' + TIME_LIMIT + ' millisecs.')
 }
 
 var timeoutId = setTimeout(tookTooLong, TIME_LIMIT);
 
-var serverMethods = {
-	add: function(lhs, rhs, resultsBack, errBack){},
-	div: function(lhs, rhs, resultsBack, errBack){}
+function output(msg) {
+    var div = document.createElement('div');
+    div.textContent = msg;
+    document.body.appendChild(div);
+    console.log(msg);
 }
 
-var proxy = (new RemoteMethodCall.Requestor(serverMethods, ChannelPlate.ChildIframeChannelPlate)).serverProxy();
+var serverMethods = {
+    add: function(lhs, rhs, resultsBack, errBack){},
+    div: function(lhs, rhs, resultsBack, errBack){}
+}
 
-proxy.add(2,2, function(result){
-	if (result === 4) {
-		console.log('PASS: ' + result);
-	} else {
-		console.log('FAIL: ' + result)
-	}
-	proxy.div(2,0,
-		function(result){
-			console.log('FAIL: ' + result);
-			clearTimeout(timeoutId);
-		},
-		function (err) {
-			console.log('PASS: ' + err);
-			clearTimeout(timeoutId);
-		}
-	);
+ChannelPlate.iframe.parent.startClient(serverMethods, function(proxy) {
+    proxy.add(2,2, function(result){
+        if (result === 4) {
+            output('PASS: ' + result);
+        } else {
+            output('FAIL: ' + result)
+        }
+        proxy.div(2,0,
+            function(result){
+                output('FAIL: ' + result);
+                clearTimeout(timeoutId);
+            },
+            function (err) {
+                output('PASS: ' + err);
+                clearTimeout(timeoutId);
+            }
+        );
+    });
 });
-
 </script>
 </head>
 <body>
-<p>Open the DEBUGging console to see the test results</p>
+<p>Testing iframe remote methods</p>
 </body>
 </html>

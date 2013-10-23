@@ -7,13 +7,13 @@
   "description": "Test/Demo extension for ChannelPlate",
    "devtools_page": "test/extension/testDevtoolsPage.html",
     "background": {
-      "scripts": ["ChannelPlate.js", "RemoteMethodCall.js", "XHRInBackground.js"] // workaround CSP
+      "scripts": ["ChannelPlate.js", "ChannelPlate.js", "XHRInBackground.js"] // workaround CSP
     },
   "permissions" :
     [
       "http://*/", // Cross site XHR
-      "https://*/", 
-      "experimental"  // chrome.experimental.devtools.console 
+      "https://*/",
+      "experimental"  // chrome.experimental.devtools.console
     ],
     "web_accessible_resources":
     [

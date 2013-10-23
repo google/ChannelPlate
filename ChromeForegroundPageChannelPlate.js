@@ -16,7 +16,7 @@
 	function ContentScriptChannelPlate(myName, onMessage) {
 	  this.port = chrome.extension.connect({name: myName});
 	  function onDisconnect(event){
-	    console.log("ChromePortClient onDisconnect ", event);
+	    console.log("ChromeClientPort onDisconnect ", event);
 	     delete this.port;
 	  }
 	  this.port.onDisconnect.addListener(onDisconnect.bind(this));

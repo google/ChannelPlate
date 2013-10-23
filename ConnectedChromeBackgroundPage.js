@@ -1,7 +1,7 @@
 // Google BSD license http://code.google.com/google_bsd_license.html
 // Copyright 2013 Google Inc. johnjbarton@google.com
 
-(function channelPlateConnectedWorker(global) {
+(function (global) {
 
   "use strict";
   var DEBUG = false;
@@ -11,7 +11,7 @@
 
   //-----------------------------------------------------------------------------
   // For background pages listening for foreground connections
-  // Create a new PortServer port for each foreground contact
+  // Create a new getServerPort port for each foreground contact
 
   function ConnectedChromeBackgroundPage(onConnect) {
 

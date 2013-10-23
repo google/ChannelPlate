@@ -3,7 +3,7 @@
 
 // Add this to the manifest.json:
 // "background": {
-//      "scripts": ["ChannelPlate/ChannelPlate.js", "ChannelPlate/RemoteMethodCall.js", ChannelPlate/XHRInBackground.js"] // workaround CSP
+//      "scripts": ["ChannelPlate/ChannelPlate.js", "ChannelPlate/ChannelPlate.js", ChannelPlate/XHRInBackground.js"] // workaround CSP
 //    },
 
 
@@ -21,7 +21,7 @@ if (DEBUG) {
 
 var XHRInBackground = {};
 
-// Cross site XHR, xhr(url) -> content 
+// Cross site XHR, xhr(url) -> content
 //
 XHRInBackground.request = function(method, url, callback, errback) {
   if (!callback || !errback) {
@@ -31,12 +31,12 @@ XHRInBackground.request = function(method, url, callback, errback) {
   xhr.open(method, url);
   xhr.addEventListener('load', function(e) {
     if (xhr.status == 200 || xhr.status == 0) {
-      if (DEBUG) 
+      if (DEBUG)
         console.log("end xhr "+url);
       totalCallback++;
       callback(xhr.responseText);
     } else {
-      if (DEBUG) 
+      if (DEBUG)
         console.error("err xhr "+url);
       totalErrback++;
       errback(xhr.status);
@@ -52,7 +52,7 @@ XHRInBackground.request = function(method, url, callback, errback) {
 };
 
 
-// Cross site XHR, xhr(url) -> content 
+// Cross site XHR, xhr(url) -> content
 //
 XHRInBackground.xhr = function(url, callback, errback) {
   if (DEBUG)
@@ -64,13 +64,13 @@ XHRInBackground.GET = function(url, callback, errback) {
   this.request('GET', url, callback, errback);
 };
 
-// Cross site XHR WebDAV, xhr(url) -> content 
+// Cross site XHR WebDAV, xhr(url) -> content
 //
 XHRInBackground.PUT = function(url, callback, errback) {
   this.request('PUT', url, callback, errback);
 };
 
-// Cross site XHR WebDAV, xhr(url) -> content 
+// Cross site XHR WebDAV, xhr(url) -> content
 //
 XHRInBackground.PROPFIND = function(url, callback, errback) {
   this.request('PROPFIND', url, callback, errback);

@@ -2,9 +2,7 @@
 // Copyright 2013 Google Inc. johnjbarton@google.com
 
 importScripts("../ChannelPlate.js");
-importScripts("../WorkerChannelPlate.js");
-importScripts("../RemoteMethodCall.js");
-
+importScripts("../worker.js");
 
 // Service we provide to web page
 var serverTestMethods = {
@@ -20,12 +18,10 @@ var serverTestMethods = {
     },
     terminate: function(callback, errback) {
         callback();
-        testServerWorker();
+        terminate();
     }
 }
 
-var rawPort = new ChannelPlate.WorkerChannelPlate(function onMessage(){
-	console.error("Should not be called");
+ChannelPlate.worker.parent.startServer(serverTestMethods, function(server) {
+    console.log("server started");
 });
-
-new RemoteMethodCall.Responder(serverTestMethods, rawPort);

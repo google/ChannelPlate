@@ -3,5 +3,5 @@
 
 var server;
 ChannelPlate.ChromeBackgroundListener(function(rawPort){
-  server = new RemoteMethodCall.Responder(XHRInBackground, rawPort);
+  server = new ChannelPlate.Responder(XHRInBackground, rawPort);
 });

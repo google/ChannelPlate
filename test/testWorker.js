@@ -2,27 +2,23 @@
 // Copyright 2013 Google Inc. johnjbarton@google.com
 
 importScripts("../ChannelPlate.js");
-importScripts("../WorkerChannelPlate.js");
+importScripts("../worker.js");
 
-var debug = false;
+var debug = true;
 
-// Low-level incoming API implements test
-//
-function onMessage(message) {
-  if (message.data === "hello child") {
-    console.log("PASS: child hears")
-  } else {
-    console.log('FAIL: '+window.location + ' heard ' + message.data, message);
-  }
-}
-console.log("ChannelPlate " + Object.keys(ChannelPlate).join(','));
-
-var portToParent = new ChannelPlate.WorkerChannelPlate(onMessage);
+ChannelPlate.worker.parent.connect(function onConnect(messagePort) {
+	messagePort.onMessage.addListener(function onMessage(message) {
+		// Low-level incoming API implements test
+  		if (message === "hello child") {
+    		console.log("PASS: child hears " + message)
+  		} else {
+    		console.log('FAIL: '+ location + ' heard ' + message);
+  		}
+	});
+	// Low-level outgoing test
+	messagePort.postMessage("mommy?");
+});
 
 if (debug) {
   console.log("child listening for parent");
 }
-
-// Low-level outgoing API continues test
-//
-portToParent.postMessage("mommy?");

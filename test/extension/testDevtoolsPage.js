@@ -5,7 +5,7 @@ var XHRInBackground = {
 };
 
 
-var proxy = (new RemoteMethodCall.Requestor(XHRInBackground, ChannelPlate.DevtoolsPortClient)).serverProxy();
+var proxy = (new ChannelPlate.Requestor(XHRInBackground, ChannelPlate.DevtoolsClientPort)).serverProxy();
     proxy.GET(
     	'http://example.com',
     	function(result) {

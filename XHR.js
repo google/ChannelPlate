@@ -3,7 +3,7 @@
 
 (function(){
 
-    var xhrFromBackground = (new RemoteMethodCall.Requestor(XHRInBackground, ChannelPlate.DevtoolsPortClient)).serverProxy();
+    var xhrFromBackground = (new ChannelPlate.Requestor(XHRInBackground, ChannelPlate.DevtoolsClientPort)).serverProxy();
 
     var XHR = {
       asyncLoadInBackground: function(url, fncOfContent) {

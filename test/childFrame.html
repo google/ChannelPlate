@@ -1,36 +1,43 @@
 <html>
 <head>
 <script src="../ChannelPlate.js"></script>
-<script src="../ChildIframeChannelPlate.js"></script>
+<script src="../iframe.js"></script>
 <script>
 // Google BSD license http://code.google.com/google_bsd_license.html
 // Copyright 2011 Google Inc. johnjbarton@google.com
 
 var debug = false;
 
-// Low-level incoming API implements test
-//
-function onMessage(message) {
-  if (message.data === "hello child") {
-    console.log("PASS: child hears")
-  } else {
-    console.log('FAIL: '+window.location + ' heard ' + message.data, message);
-  }
+function output(msg) {
+    var div = document.createElement('div');
+    div.textContent = msg;
+    document.body.appendChild(div);
+    console.log(msg);
 }
-
-var portToParent= new ChannelPlate.ChildIframeChannelPlate(onMessage);
 
 if (debug) {
   console.log("child listening for parent");
 }
 
-// Low-level outgoing API continues test
-//
-portToParent.postMessage("mommy?");
+
+ChannelPlate.iframe.parent.connect(function (parentMessagePort) {
+    // Low-level incoming API implements test
+    //
+    parentMessagePort.onmessage = function onMessage(message) {
+        if (message.data === "hello child") {
+            output("PASS: child hears " + message.data);
+        } else {
+            output('FAIL: '+window.location + ' heard ' + message.data);
+        }
+    }
+    // Low-level outgoing API continues test
+    //
+    parentMessagePort.postMessage("mommy?");
+});
 
 </script>
 </head>
 <body>
-<p>Open the debugging console to see the test results</p>
+<p>Testing child iframe connect</p>
 </body>
 </html>
